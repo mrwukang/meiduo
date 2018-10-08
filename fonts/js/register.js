@@ -51,7 +51,7 @@ var vm = new Vue({
 			this.image_code_id = this.generate_uuid();
 
 			// 设置页面中图片验证码img标签的src属性
-			this.image_code_url = 'http://127.0.0.1:8000' + "/verifications/imagecodes/" + this.image_code_id + "/";
+			this.image_code_url = this.host + "/verifications/imagecodes/" + this.image_code_id + "/";
 		},
 
 		// 检查用户名
@@ -153,7 +153,7 @@ var vm = new Vue({
             }
 
             // 向后端接口发送请求，让后端发送短信验证码
-            axios.get('http://127.0.0.1:8000' + '/verifications/smscodes/' + this.mobile + '/?text=' + this.image_code + '&image_code_id=' + this.image_code_id, {
+            axios.get(this.host + '/verifications/smscodes/' + this.mobile + '/?text=' + this.image_code + '&image_code_id=' + this.image_code_id, {
                 // 向后端声明，请返回json数据
                 responseType: 'json'
             })
@@ -219,7 +219,7 @@ var vm = new Vue({
 
             if(this.error_name == false && this.error_password == false && this.error_check_password == false
                 && this.error_phone == false && this.error_sms_code == false && this.error_allow == false) {
-                axios.post('http://127.0.0.1:8000'+'/users/', {
+                axios.post(this.host+'/users/', {
                         username: this.username,
                         password: this.password,
                         password2: this.password2,
@@ -230,12 +230,13 @@ var vm = new Vue({
                         responseType: 'json'
                     })
                     .then(response => {
-                        // 保存后端返回的token数据
-                        localStorage.token = response.data.token;
-                        localStorage.username = response.data.username;
-                        localStorage.user_id = response.data.id;
-
-                        location.href = '/index.html';
+                        // 记录用户的登录状态
+						sessionStorage.clear();
+						localStorage.clear();
+						localStorage.token = response.data.token;
+						localStorage.username = response.data.username;
+						localStorage.user_id = response.data.id;
+						location.href = '/index.html';
                     })
                     .catch(error=> {
                         if (error.response.status == 400) {
