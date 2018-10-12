@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from django_redis import get_redis_connection
 
+from celery_tasks.sms.tasks import send_sms_code
 from libs.captcha.captcha import captcha
 from verifications.serializers import RegisterSMSCodeSerializer
 
@@ -42,6 +43,7 @@ class RegisterSMSCodeView(APIView):
 
         # 生成短信验证码
         sms_code = '%06d' % (random.randint(0, 999999))
+        # send_sms_code.delay(mobile, sms_code)
         print(sms_code)
         redis_conn.setex('sms_%s' % mobile, 300, sms_code)
         redis_conn.setex('sms_flag_%s' % mobile, 60, 1)
