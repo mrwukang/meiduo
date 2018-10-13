@@ -14,6 +14,7 @@ import os
 import sys
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+# 向上找两级，获取基地址
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 
@@ -49,6 +50,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',  # 实现跨域访问
+    'ckeditor',  # 富文本编辑器
+    'ckeditor_uploader',  # 富文本编辑器上传图片模块
+    'django_crontab',  # 定时任务
 
     'areas.apps.AreasConfig',
     'carts.apps.CartsConfig',
@@ -75,11 +79,11 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'mall.urls'
 
-
+# 模板（HTML页面）路径相关配置
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -113,7 +117,7 @@ DATABASES = {
 
 # Password validation
 # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators
-
+# 认证相关
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -129,7 +133,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
+# redis 设置
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -198,10 +202,13 @@ LOGGING = {
     }
 }
 
-# 异常处理
+
 REST_FRAMEWORK = {
+    # 分页使用
+    'DEFAULT_PAGINATION_CLASS':  'utils.pagination.StandardResultsSetPagination',
     # 异常处理
     'EXCEPTION_HANDLER': 'utils.exceptions.exception_handler',
+    # 认证系统
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
@@ -212,12 +219,17 @@ REST_FRAMEWORK = {
 import datetime
 
 JWT_AUTH = {
+    # 指明token的有效期
     'JWT_EXPIRATION_DELTA': datetime.timedelta(days=1),
+    # 登录后的返回值调用函数
     'JWT_RESPONSE_PAYLOAD_HANDLER': 'utils.users.jwt_response_payload_handler',
 }
 
+# 登录使用的认证后端
 AUTHENTICATION_BACKENDS = [
-   'utils.users.UsernameMobileAuthBackend',
+   # 'utils.users.UsernameMobileAuthBackend',
+   'utils.users.MobileAuthBackend',
+   'utils.users.UsernameAuthBackend',
 ]
 
 AUTH_USER_MODEL = 'users.User'
@@ -227,7 +239,7 @@ QQ_CLIENT_ID = '101474184'
 QQ_CLIENT_SECRET = 'c6ce949e04e12ecc909ae6a8b09b637c'
 QQ_REDIRECT_URI = 'http://www.meiduo.site:8080/oauth_callback.html'
 
-
+# 邮件验证使用的后端
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.163.com'
 EMAIL_PORT = 25
@@ -237,6 +249,34 @@ EMAIL_HOST_USER = 'wukangmr@163.com'
 EMAIL_HOST_PASSWORD = '123456abc'
 # 收件人看到的发件人
 EMAIL_FROM = '美多商城<wukangmr@163.com>'
+
+# FastDFS
+FDFS_URL = 'http://192.168.15.132:8888/'  # 访问图片的路径域名
+FDFS_CLIENT_CONF = os.path.join(BASE_DIR, 'utils/fastdfs/client.conf')
+
+# 富文本编辑器ckeditor配置
+CKEDITOR_CONFIGS = {
+    'default': {
+        'toolbar': 'full',  # 工具条功能
+        'height': 300,  # 编辑器高度
+        # 'width': 300,  # 编辑器宽
+    },
+}
+CKEDITOR_UPLOAD_PATH = ''  # 上传图片保存路径，使用了FastDFS，所以此处设为''
+# 在编辑器里浏览上传的图片
+CKEDITOR_IMAGE_BACKEND = 'pillow'
+
+# django文件存储
+DEFAULT_FILE_STORAGE = 'utils.fastdfs.storage.FastDFSStorage'
+
+# 生成的静态html文件保存目录
+GENERATED_STATIC_HTML_FILES_DIR = os.path.join(os.path.dirname(BASE_DIR), 'front')
+
+# 定时任务
+CRONJOBS = [
+    # 每5分钟执行一次生成主页静态文件
+    ('*/5 * * * *', 'contents.crons.generate_static_index_html', '>> /home/python/python_project/meiduo/mall/logs/crontab.log')
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
@@ -255,6 +295,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
+# 静态文件
 STATIC_URL = '/static/'
+# 单级目录静态文件
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 MEDIA_ROOT = os.path.join(BASE_DIR, "static")

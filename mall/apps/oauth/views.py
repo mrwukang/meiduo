@@ -1,93 +1,99 @@
-from QQLoginTool.QQtool import OAuthQQ
+import logging
+
 from rest_framework import status
-from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_jwt.settings import api_settings
 
 from mall import settings
+from QQLoginTool.QQtool import OAuthQQ
+
 from oauth.models import OAuthQQUser
 from oauth.serializers import QQAuthUserSerializer
 from oauth.utils import generate_save_user_token
 
+logger = logging.getLogger("meiduo")
 
 class QQAuthURLView(APIView):
     """
-    生成url 实现出现QQ授权登录视图
-    GET:  /oauth/qq/authorization/?next=xxx
+    获得QQ扫码登录的页面
+     GET:   oauth/qq/authorization/
     """
     def get(self, request):
-        next_url = request.query_params.get('next')
-        if not next_url:
-            next_url = '/'
-        oauth = OAuthQQ(client_id=settings.QQ_CLIENT_ID, client_secret=settings.QQ_CLIENT_SECRET, redirect_uri=settings.QQ_REDIRECT_URI, state=next_url)
-        login_url = oauth.get_qq_url()
-        return Response({'login_url': login_url})
+        """
+        返回QQ扫码登录的url
+        """
+        state = request.query_params.get("next")
+        if not state:
+            state = '/'
+        client_id = settings.QQ_CLIENT_ID
+        client_secret = settings.QQ_CLIENT_SECRET
+        redirect_uri = settings.QQ_REDIRECT_URI
+        oauthqq = OAuthQQ(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, state=state)
+        qq_login_url = oauthqq.get_qq_url()
+        return Response({'login_url': qq_login_url})
 
 
-class QQAuthUserView(GenericAPIView):
+class QQAuthUserView(APIView):
     """
-    扫码登录，先是get方式，得到扫码QQ号的code
-    通过code得到access_token
-    通过access_token得到open_id
-    通过open_id在tb_oauth_qq中寻找对象，如果有，就返回对象的token，username，id
-
-
-    如果没有寻找到对象，就返回access_token
-    并显示关联界面
-    填写mobile，password，图片验证码，短信验证码后ajax提交数据
-    验证短信验证码，从tb_users中寻找mobile=mobile的对象，如果有，则验证密码，密码正确则关联
-
-    如果没有对象，则创建对象并关联
+    URL: oauth/qq/user/
+    如果是get请求，则是为了获得openid
+    如果是post请求，则是为了提交数据
     """
-    serializer_class = QQAuthUserSerializer
-
     def get(self, request):
+
+        # 创建OAuthQQ对象
         code = request.query_params.get('code')
-        if not code:
-            return Response({"message":"没有code"}, status=status.HTTP_400_BAD_REQUEST)
-        oauth = OAuthQQ(client_id=settings.QQ_CLIENT_ID, client_secret=settings.QQ_CLIENT_SECRET,
-                        redirect_uri=settings.QQ_REDIRECT_URI)
+        client_id = settings.QQ_CLIENT_ID
+        client_secret = settings.QQ_CLIENT_SECRET
+        redirect_uri = settings.QQ_REDIRECT_URI
+        oauthqq = OAuthQQ(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri)
+        # 获取扫码用户的openid
         try:
-            access_token = oauth.get_access_token(code=code)
-            open_id = oauth.get_open_id(access_token=access_token)
-        except Exception:
-            return Response({'message': 'QQ服务异常'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            token = oauthqq.get_access_token(code)
+            openid = oauthqq.get_open_id(token)
+        except Exception as e:
+            logger.error(e)
+            return Response({"message": "获取openid失败"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            oauth_user = OAuthQQUser.objects.get(openid=open_id)
+            qq_user = OAuthQQUser.objects.get(openid=openid)
         except OAuthQQUser.DoesNotExist:
-            access_token_openid = generate_save_user_token(open_id)
-            return Response({'access_token': access_token_openid})
+            # 如果没有对应的用户，则将加密后的open_id返回
+            access_token = generate_save_user_token(openid)
+            return Response({"access_token": access_token})
         else:
-            user = oauth_user.user
-            # 如果openid已绑定美多商城用户，直接生成JWT token，并返回
+            user = qq_user.user
+            # 如果找到了openid对应的用户，则返回该用户的token丶user_id和username
             jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
             jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
-
-            # 获取oauth_user关联的user
             payload = jwt_payload_handler(user)
             token = jwt_encode_handler(payload)
-            response = Response({
-                'token': token,
-                'username': user.username,
-                'user_id': user.id,
-            })
-            return response
+            response = {
+                "token": token,
+                "user_id": user.id,
+                "username": user.username,
+            }
+            return Response(response)
 
     def post(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_excerption=True)
+        """
+        如果是post方式提交，则说明是为了绑定用户
+        判断用户手机号是否已经创建了用户，如果已经创建了，则直接绑定，如果没有，则创建用户后绑定
+        """
+        data = request.data
+        serializer = QQAuthUserSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
         user = serializer.save()
-
-        # 这四步就是生成token
         jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
         jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
         payload = jwt_payload_handler(user)
         token = jwt_encode_handler(payload)
-        response = Response({
-            'token': token,
-            'username': user.username,
-            'user_id': user.id,
-        })
-        return response
+        response = {
+            "token": token,
+            "user_id": user.id,
+            "username": user.username,
+        }
+        return Response(response)
+
+

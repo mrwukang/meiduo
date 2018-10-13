@@ -47,7 +47,7 @@ class RegisterSMSCodeView(APIView):
         print(sms_code)
         redis_conn.setex('sms_%s' % mobile, 300, sms_code)
         redis_conn.setex('sms_flag_%s' % mobile, 60, 1)
-        return Response({'message': 'OK'})
+        return Response({'message': 'OK', 'sms_code': sms_code})
 
 
 

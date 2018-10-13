@@ -3,7 +3,7 @@ from celery_tasks.main import app
 from mall import settings
 
 
-# @app.task(name='send_verify_mail')
+@app.task(name='send_verify_mail')
 def send_verify_mail(to_email, verify_url):
     subject = "美多商城邮箱验证"
     html_message = '<p>尊敬的用户您好！</p>' \

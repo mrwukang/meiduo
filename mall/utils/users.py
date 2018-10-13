@@ -6,7 +6,7 @@ from users.models import User
 def jwt_response_payload_handler(token, user=None, request=None):
     """
        自定义jwt认证成功返回数据
-       """
+    """
 
     return {
         'token': token,
@@ -36,4 +36,36 @@ class UsernameMobileAuthBackend(ModelBackend):
         user = get_user_by_account(username)
         if user and user.check_password(password):
             return user
+
+
+class MobileAuthBackend(ModelBackend):
+    """
+    自定义手机号认证
+    """
+
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        try:
+            user = User.objects.get(mobile=username)
+        except User.DoesNotExist:
+            user = None
+        if user and user.check_password(password):
+            return user
+        return None
+
+
+class UsernameAuthBackend(ModelBackend):
+    """
+    自定义用户名认证
+    """
+
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            user = None
+        if user and user.check_password(password):
+            return user
+        return None
+
+
 

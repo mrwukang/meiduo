@@ -2,7 +2,7 @@ from django_redis import get_redis_connection
 from rest_framework_jwt.settings import api_settings
 
 from celery_tasks.email.tasks import send_verify_mail
-from users.models import User
+from users.models import User, Address
 from rest_framework import serializers
 import re
 
@@ -14,7 +14,7 @@ class RegisterCreateSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(max_length=20, min_length=8, label="校验密码", allow_null=False, allow_blank=False, write_only=True)
     sms_code = serializers.CharField(max_length=6, min_length=6, label="短信验证码", allow_blank=False, allow_null=False, write_only=True)
     allow = serializers.CharField(label="是否同意条款", allow_null=False, allow_blank=False, write_only=True)
-    token = serializers.CharField(label='登录状态token', read_only=True)
+    token = serializers.CharField(label='登录状态token', required=False)
 
     class Meta:
         model = User
@@ -80,7 +80,6 @@ class RegisterCreateSerializer(serializers.ModelSerializer):
         payload = jwt_payload_handler(user)
         token = jwt_encode_handler(payload)
         user.token = token
-
         return user
 
 
@@ -98,6 +97,12 @@ class EmailSerializer(serializers.ModelSerializer):
             'eamil': {'required': True},
         }
 
+    def validate(self, attrs):
+        email = attrs.get("email")
+        if not re.match(r'^[a-zA-Z0-9_.-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z0-9]{2,6}$', email):
+            raise serializers.ValidationError("邮箱格式不正确")
+        return attrs
+
     def update(self, instance, validated_data):
         email = validated_data['email']
         instance.email = email
@@ -107,5 +112,46 @@ class EmailSerializer(serializers.ModelSerializer):
         # 生成激活链接
         verify_url = instance.generate_verify_email_url()
         # 发送,注意调用delay方法
-        send_verify_mail(email, verify_url)
+        send_verify_mail.delay(email, verify_url)
         return instance
+
+
+class VerificationEmailSerializer(serializers.Serializer):
+    token = serializers.CharField(label="邮箱验证使用的token", required=True)
+
+    def validate_token(self, value):
+        user = User.check_verify_email_token(value)
+        if not user:
+            raise serializers.ValidationError("无效的token")
+        return value
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    """
+    新建收货地址时使用的序列化器
+    """
+    province = serializers.StringRelatedField(read_only=True)
+    city = serializers.StringRelatedField(read_only=True)
+    district = serializers.StringRelatedField(read_only=True)
+    province_id = serializers.IntegerField(label='省ID', required=True)
+    city_id = serializers.IntegerField(label='市ID', required=True)
+    district_id = serializers.IntegerField(label='区ID', required=True)
+    mobile = serializers.RegexField(label='手机号', regex=r'^1[3-9]\d{9}$')
+
+    class Meta:
+        model = Address
+        exclude = ('user', 'is_deleted', 'create_time', 'update_time')
+
+    def create(self, validated_data):
+        # Address模型类中有user属性,将user对象添加到模型类的创建参数中
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class AddressTitleSerializer(serializers.ModelSerializer):
+    """修改地址标题的时候使用的序列化器"""
+    class Meta:
+        model = Address
+        fields = ['title']
+
+
