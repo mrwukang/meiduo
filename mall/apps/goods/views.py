@@ -2,12 +2,14 @@ from collections import OrderedDict
 from django.shortcuts import render
 # Create your views here.
 from django.views.generic import View
+from drf_haystack.viewsets import HaystackViewSet
 from rest_framework.filters import OrderingFilter
 from rest_framework.generics import ListAPIView
 
+from celery_tasks.html.tasks import generate_static_sku_detail_html
 from contents.models import ContentCategory
 from goods.models import GoodsChannel, SKU
-from goods.serializers import SKUSerializer
+from goods.serializers import SKUSerializer, SKUIndexSerializer
 from utils.pagination import StandardResultsSetPagination
 
 
@@ -75,6 +77,9 @@ class CategoryView(View):
         for cat in content_categories:
             contents[cat.key] = cat.content_set.filter(status=True).order_by('sequence')
 
+        # 用来查看商品详情时写的
+        # generate_static_sku_detail_html(1)
+
         context = {
             'categories': categories,
             'contents': contents
@@ -105,11 +110,20 @@ class SKUListView(ListAPIView):
     filter_backends = [OrderingFilter]
     ordering_fields = ['id', 'price', 'comments']
 
-    # pagination_class = StandardResultsSetPagination
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         category_id = self.kwargs.get("category_id")
         return SKU.objects.filter(category_id=category_id, is_launched__exact=True)
 
 
+class SKUSearchViewSet(HaystackViewSet):
+    """
+    SKU搜索
+    """
+
+    pagination_class = StandardResultsSetPagination
+    index_models = [SKU]
+
+    serializer_class = SKUIndexSerializer
 

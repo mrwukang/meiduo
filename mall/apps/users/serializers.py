@@ -2,9 +2,12 @@ from django_redis import get_redis_connection
 from rest_framework_jwt.settings import api_settings
 
 from celery_tasks.email.tasks import send_verify_mail
+from goods.models import SKU
 from users.models import User, Address
 from rest_framework import serializers
 import re
+
+from users.utils import generate_verify_email_url
 
 
 class RegisterCreateSerializer(serializers.ModelSerializer):
@@ -104,26 +107,17 @@ class EmailSerializer(serializers.ModelSerializer):
         return attrs
 
     def update(self, instance, validated_data):
+        id = instance.id
         email = validated_data['email']
         instance.email = email
         instance.save()
 
         # 发送激活邮件
         # 生成激活链接
-        verify_url = instance.generate_verify_email_url()
+        verify_url = generate_verify_email_url(id, email)
         # 发送,注意调用delay方法
         send_verify_mail.delay(email, verify_url)
         return instance
-
-
-class VerificationEmailSerializer(serializers.Serializer):
-    token = serializers.CharField(label="邮箱验证使用的token", required=True)
-
-    def validate_token(self, value):
-        user = User.check_verify_email_token(value)
-        if not user:
-            raise serializers.ValidationError("无效的token")
-        return value
 
 
 class AddressSerializer(serializers.ModelSerializer):
@@ -153,5 +147,35 @@ class AddressTitleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
         fields = ['title']
+
+
+class UserBrowsingHistorySerializer(serializers.Serializer):
+    """
+    添加到用户浏览历史使用的序列化器
+    """
+    sku_id = serializers.IntegerField(label="商品编号", required=True, min_value=1)
+
+    def validate_sku_id(self, value):
+        """判断sku_id是否正确"""
+        try:
+            SKU.objects.get(id=value)
+        except SKU.DoesNotExist:
+            raise serializers.ValidationError("商品不存在")
+        return value
+
+    def create(self, validated_data):
+        # 获取用户信息
+        user_id = self.context['request'].user.id
+        # 获取商品id
+        sku_id = validated_data['sku_id']
+        # 连接redis
+        redis_conn = get_redis_connection('history')
+        # 移除已经存在的本记录
+        redis_conn.lrem('history_%s' % user_id, 0, sku_id)
+        # 添加新的记录
+        redis_conn.lpush('history_%s' % user_id, sku_id)
+        # 保存最多5条记录
+        redis_conn.ltrim('history_%s' % user_id, 0, 4)
+        return validated_data
 
 

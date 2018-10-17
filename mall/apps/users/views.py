@@ -1,16 +1,18 @@
-from django.shortcuts import render
+from django_redis import get_redis_connection
 from rest_framework import status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import CreateAPIView, RetrieveAPIView, UpdateAPIView, GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-# Create your views here.
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
+from goods.models import SKU
+from goods.serializers import SKUSerializer
 from users.models import User
 from users.serializers import RegisterCreateSerializer, UserDetailSerializer, EmailSerializer, AddressSerializer, \
-    AddressTitleSerializer
+    AddressTitleSerializer, UserBrowsingHistorySerializer
+from users.utils import check_verify_email_token
 
 
 class RegisterUsernameAPIView(APIView):
@@ -47,9 +49,9 @@ class RegisterCreateView(GenericAPIView):
     用户注册
     POST:   /users/
     """
-    # serializer_class = RegisterCreateSerializer
+    serializer_class = RegisterCreateSerializer
     def post(self, request):
-        serializer = RegisterCreateSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         data = serializer.data
@@ -95,7 +97,7 @@ class VerificationEmail(APIView):
         if not token:
             return Response({"message": "缺少token"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.check_verify_email_token(token=token)
+        user = check_verify_email_token(token=token)
         if not user:
             return Response({"message": "无效的token"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -104,9 +106,11 @@ class VerificationEmail(APIView):
         return Response({"message": "邮箱验证成功"}, status=status.HTTP_200_OK)
 
 
-class AddressViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin, mixins.DestroyModelMixin, mixins.ListModelMixin,
-                     GenericViewSet):
-    # 添加用户权限
+class AddressViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin, GenericViewSet):
+    """
+    收货地址视图集
+    """
     permission_classes = [IsAuthenticated]
     serializer_class = AddressSerializer
 
@@ -120,10 +124,10 @@ class AddressViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin, mixins.De
         count = request.user.addresses.count()
         if count >= 20:
             return Response({'message': '保存地址数量已经达到上限'}, status=status.HTTP_400_BAD_REQUEST)
-
         return super().create(request, *args, **kwargs)
 
     def list(self, request, *args, **kwargs):
+        """展示所有的收货地址"""
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         user = self.request.user
@@ -135,23 +139,66 @@ class AddressViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin, mixins.De
         })
 
     @action(methods=['put'], detail=True)
-    def title(self, request, pk=None, address_id=None):
-        """
-        修改标题
-        """
+    def status(self, request, pk):
+        """修改默认地址"""
+        user = request.user
+        address = self.get_object()
+        user.default_address = address
+        user.save()
+        return Response({"default_address": user.default_address_id}, status=status.HTTP_200_OK)
+
+    @action(methods=['put'], detail=True)
+    def title(self, request, pk):
+        """修改地址标题"""
         address = self.get_object()
         serializer = AddressTitleSerializer(instance=address, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
 
-    @action(methods=['put'], detail=True)
-    def status(self, request, pk=None, address_id=None):
-        """
-        修改默认地址
-        """
-        address = self.get_object()
-        user = request.user
-        user.default_address = address
-        user.save()
-        return Response({"default_address": user.default_address_id}, status=status.HTTP_200_OK)
+
+class UserBrowsingHistoryView(GenericAPIView):
+    """
+    用户浏览历史记录
+    POST /users/browerhistories/
+    GET  /users/browerhistories/
+    数据只需要保存到redis中
+    """
+    serializer_class = UserBrowsingHistorySerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def post(self, request):
+        """增加数据到redis中"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def get(self, request):
+        """查询用户的浏览历史"""
+
+        user_id = request.user.id
+        # 连接redis
+        redis_conn = get_redis_connection("history")
+        # 获取用户浏览历史
+        history_sku_ids = redis_conn.lrange('history_%s' % user_id, 0, 5)
+
+
+        # skus = []
+        # for sku_id in history_sku_ids:
+        #     try:
+        #         sku = SKU.objects.get(id=sku_id.decode())
+        #     except SKU.DoesNotExist:
+        #         return Response({"message": "内部查询错误"}, status=status.HTTP_400_BAD_REQUEST)
+        #     else:
+        #         skus.append(sku)
+
+        # TODO 为什么不直接得到skus呢
+        skus = SKU.objects.filter(id__in=history_sku_ids)
+        serializer = SKUSerializer(instance=skus, many=True)
+        return Response(serializer.data)
+
+
+
+

@@ -23,7 +23,7 @@
             <div class="welcome fl">欢迎来到美多商城!</div>
             <div class="fr">
                 <div class="login_btn fl">
-                    欢迎您：<em></em>
+                    欢迎您：<em>{{ username }}</em>
                     <span>|</span>
                     <a @click="logout">退出</a>
                 </div>
@@ -60,7 +60,7 @@
         </div>
         <div class="right_content clearfix">
                 <div class="site_top_con">
-                    <a @click="show_add">新增收货地址</a>
+                    <a href="#" @click="show_add">新增收货地址</a>
                     <span>您已创建了<b>{{addresses.length}}</b>个收货地址，最多可创建<b>{{ limit }}</b>个</span>
                 </div>
                 <div class="site_con" v-for="(address, index) in addresses">
@@ -128,14 +128,13 @@
                             <option v-for="city in cities" v-bind:value="city.id">{{ city.name }}</option>
                         </select>
                         <select v-model="form_address.district_id">
-                            <option v-for="district in districts" v-bind:value="district.id">{{district.name }}</option>
+                            <option v-for="district in districts" v-bind:value="district.id">{{ district.name }}</option>
                         </select>
                     </div>
                     <div class="form_group">
                         <label>*详细地址：</label>
                         <input v-model="form_address.place" @blur="check_place" type="text" name="">
-                        <span
-								v-show="error_place" class="error_tip">请填写地址信息</span>
+                        <span v-show="error_place" class="error_tip">请填写地址信息</span>
                     </div>
                     <div class="form_group">
                         <label>*手机：</label>

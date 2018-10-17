@@ -69,6 +69,7 @@ var vm = new Vue({
         this.get_hot_goods();
     },
     methods: {
+        // 退出登录
         logout(){
             sessionStorage.clear();
             localStorage.clear();

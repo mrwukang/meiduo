@@ -13,6 +13,7 @@ urlpatterns = [
     url(r'^infos/', views.UserDetailView.as_view(), name='infos'),
     url(r'^emails/$', views.EmailView.as_view(), name='send_email'),
     url(r'^emails/verification/$', views.VerificationEmail.as_view(), name='verification_email'),
+    url(r'^browerhistories/$', views.UserBrowsingHistoryView.as_view(), name='browsing_history'),
 
 ]
 from users.views import AddressViewSet

@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'ckeditor',  # 富文本编辑器
     'ckeditor_uploader',  # 富文本编辑器上传图片模块
     'django_crontab',  # 定时任务
+    'haystack',  # 搜索功能
 
     'areas.apps.AreasConfig',
     'carts.apps.CartsConfig',
@@ -156,6 +157,20 @@ CACHES = {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
     },
+    "history": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/3",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    },
+    "cart": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/4",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    },
 }
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
@@ -204,8 +219,8 @@ LOGGING = {
 
 
 REST_FRAMEWORK = {
-    # 分页使用
-    'DEFAULT_PAGINATION_CLASS':  'utils.pagination.StandardResultsSetPagination',
+    # 分页使用, 会修改所有视图的分页
+    # 'DEFAULT_PAGINATION_CLASS':  'utils.pagination.StandardResultsSetPagination',
     # 异常处理
     'EXCEPTION_HANDLER': 'utils.exceptions.exception_handler',
     # 认证系统
@@ -248,10 +263,11 @@ EMAIL_HOST_USER = 'wukangmr@163.com'
 # 在邮箱中设置的客户端授权密码
 EMAIL_HOST_PASSWORD = '123456abc'
 # 收件人看到的发件人
-EMAIL_FROM = '美多商城<wukangmr@163.com>'
+EMAIL_FROM = "美多商城<wukangmr@163.com>"
+EMAIL_PREFIX = "http://www.meiduo.site:8080"
 
 # FastDFS
-FDFS_URL = 'http://192.168.15.132:8888/'  # 访问图片的路径域名
+FDFS_URL = 'http://192.168.15.133:8888/'  # 访问图片的路径域名
 FDFS_CLIENT_CONF = os.path.join(BASE_DIR, 'utils/fastdfs/client.conf')
 
 # 富文本编辑器ckeditor配置
@@ -270,13 +286,25 @@ CKEDITOR_IMAGE_BACKEND = 'pillow'
 DEFAULT_FILE_STORAGE = 'utils.fastdfs.storage.FastDFSStorage'
 
 # 生成的静态html文件保存目录
-GENERATED_STATIC_HTML_FILES_DIR = os.path.join(os.path.dirname(BASE_DIR), 'front')
+GENERATED_STATIC_HTML_FILES_DIR = os.path.join(os.path.dirname(BASE_DIR), 'fonts')
 
 # 定时任务
 CRONJOBS = [
     # 每5分钟执行一次生成主页静态文件
-    ('*/5 * * * *', 'contents.crons.generate_static_index_html', '>> /home/python/python_project/meiduo/mall/logs/crontab.log')
+    ('*/1 * * * *', 'contents.crons.generate_static_index_html', '>> /home/python/python_project/meiduo/mall/logs/crontab.log')
 ]
+
+# Haystack
+HAYSTACK_CONNECTIONS = {
+    'default': {
+        'ENGINE': 'haystack.backends.elasticsearch_backend.ElasticsearchSearchEngine',
+        'URL': 'http://192.168.15.133:9200/',  # 此处为elasticsearch运行的服务器ip地址，端口号固定为9200
+        'INDEX_NAME': 'meiduo',  # 指定elasticsearch建立的索引库的名称
+    },
+}
+
+# 当添加、修改、删除数据时，自动生成索引
+HAYSTACK_SIGNAL_PROCESSOR = 'haystack.signals.RealtimeSignalProcessor'
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/

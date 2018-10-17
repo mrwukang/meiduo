@@ -4,7 +4,7 @@ var vm = new Vue({
     data: {
         host: host,
         // username: sessionStorage.username || localStorage.username,
-        username: 'www',
+        username: sessionStorage.username || localStorage.username,
         user_id: sessionStorage.user_id || localStorage.user_id,
         token: sessionStorage.token || localStorage.token,
         cart_total_count: 0, // 购物车总数量

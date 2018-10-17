@@ -10,7 +10,7 @@ var vm = new Vue({
         cities: [],
         districts: [],
         addresses: [],
-        limit: '20',
+        limit: '',
         default_address_id: '',
         form_address: {
             receiver: '',
@@ -127,7 +127,6 @@ var vm = new Vue({
             this.form_address = JSON.parse(JSON.stringify(this.addresses[index]));
             this.is_show_edit = true;
         },
-        // 检查收货人是否填写
         check_receiver: function(){
             if (!this.form_address.receiver) {
                 this.error_receiver = true;
@@ -135,7 +134,6 @@ var vm = new Vue({
                 this.error_receiver = false;
             }
         },
-        // 检查地址是否填写
         check_place: function(){
             if (!this.form_address.place) {
                 this.error_place = true;
@@ -143,16 +141,14 @@ var vm = new Vue({
                 this.error_place = false;
             }
         },
-        // 检查手机号是否填写，是否符合规范
         check_mobile: function(){
-            var re = /^1[3-9]\d{9}$/;
+            var re = /^1[3456789]\d{9}$/;
             if(re.test(this.form_address.mobile)) {
                 this.error_mobile = false;
             } else {
                 this.error_mobile = true;
             }
         },
-        // 检查邮箱是否填写，邮箱是否符合相关规范
         check_email: function(){
             if (this.form_address.email) {
                 var re = /^[a-z0-9][\w\.\-]*@[a-z0-9\-]+(\.[a-z]{2,5}){1,2}$/;
@@ -163,8 +159,7 @@ var vm = new Vue({
                 }
             }
         },
-
-        // 保存地址
+         // 保存地址
         save_address: function(){
             if (this.error_receiver || this.error_place || this.error_mobile || this.error_email || !this.form_address.province_id || !this.form_address.city_id || !this.form_address.district_id ) {
                 alert('信息填写有误！');
@@ -205,7 +200,6 @@ var vm = new Vue({
                 }
             }
         },
-
         // 删除地址
         del_address: function(index){
             axios.delete(this.host + '/users/addresses/' + this.addresses[index].id + '/', {
@@ -222,7 +216,6 @@ var vm = new Vue({
                     console.log(error.response.data);
                 })
         },
-
         // 设置默认地址
         set_default: function(index){
             axios.put(this.host + '/users/addresses/' + this.addresses[index].id + '/status/', {}, {
@@ -238,7 +231,6 @@ var vm = new Vue({
                     console.log(error.response.data);
                 })
         },
-
         // 展示编辑标题
         show_edit_title: function(index){
             this.input_title = this.addresses[index].title;
@@ -269,7 +261,6 @@ var vm = new Vue({
                     })
             }
         },
-
         // 取消保存地址
         cancel_title: function(index){
 
