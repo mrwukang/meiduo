@@ -1,12 +1,14 @@
 from django_redis import get_redis_connection
 from rest_framework import status, mixins
 from rest_framework.decorators import action
-from rest_framework.generics import CreateAPIView, RetrieveAPIView, UpdateAPIView, GenericAPIView
+from rest_framework.generics import RetrieveAPIView, UpdateAPIView, GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet, GenericViewSet
+from rest_framework.viewsets import GenericViewSet
+from rest_framework_jwt.views import ObtainJSONWebToken
 
+from carts.utils import merge_cart_cookie_to_redis
 from goods.models import SKU
 from goods.serializers import SKUSerializer
 from users.models import User
@@ -50,12 +52,29 @@ class RegisterCreateView(GenericAPIView):
     POST:   /users/
     """
     serializer_class = RegisterCreateSerializer
+
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         data = serializer.data
         return Response(data=data)
+
+
+class UserAuthorizationView(ObtainJSONWebToken):
+    """
+    用户登陆时使用的视图
+    """
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            # 如果验证通过，说明用户登陆成功
+            user = serializer.validated_data.get("user")
+
+            # 合并购物车
+            response = merge_cart_cookie_to_redis(request, user, response)
+        return response
 
 
 class UserDetailView(RetrieveAPIView):
@@ -182,20 +201,20 @@ class UserBrowsingHistoryView(GenericAPIView):
         # 连接redis
         redis_conn = get_redis_connection("history")
         # 获取用户浏览历史
-        history_sku_ids = redis_conn.lrange('history_%s' % user_id, 0, 5)
+        history_sku_ids = redis_conn.lrange('history_%s' % user_id, 0, 4)
 
+        skus = []
+        for sku_id in history_sku_ids:
+            try:
+                sku = SKU.objects.get(id=sku_id.decode())
+            except SKU.DoesNotExist:
+                return Response({"message": "内部查询错误"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                skus.append(sku)
 
-        # skus = []
-        # for sku_id in history_sku_ids:
-        #     try:
-        #         sku = SKU.objects.get(id=sku_id.decode())
-        #     except SKU.DoesNotExist:
-        #         return Response({"message": "内部查询错误"}, status=status.HTTP_400_BAD_REQUEST)
-        #     else:
-        #         skus.append(sku)
+        # TODO 为什么不直接得到skus呢, 因为如果这样写是无序的
+        # skus = SKU.objects.filter(id__in=history_sku_ids)
 
-        # TODO 为什么不直接得到skus呢
-        skus = SKU.objects.filter(id__in=history_sku_ids)
         serializer = SKUSerializer(instance=skus, many=True)
         return Response(serializer.data)
 

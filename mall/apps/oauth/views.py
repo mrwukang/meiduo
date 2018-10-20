@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_jwt.settings import api_settings
 
+from carts.utils import merge_cart_cookie_to_redis
 from mall import settings
 from QQLoginTool.QQtool import OAuthQQ
 
@@ -69,12 +70,14 @@ class QQAuthUserView(APIView):
             jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
             payload = jwt_payload_handler(user)
             token = jwt_encode_handler(payload)
-            response = {
+            response = Response({
                 "token": token,
                 "user_id": user.id,
                 "username": user.username,
-            }
-            return Response(response)
+            })
+            response = merge_cart_cookie_to_redis(request, user, response)
+
+            return response
 
     def post(self, request):
         """
@@ -84,16 +87,18 @@ class QQAuthUserView(APIView):
         data = request.data
         serializer = QQAuthUserSerializer(data=data)
         serializer.is_valid(raise_exception=True)
+        # 绑定用户
         user = serializer.save()
         jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
         jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
         payload = jwt_payload_handler(user)
         token = jwt_encode_handler(payload)
-        response = {
+        response = Response({
             "token": token,
             "user_id": user.id,
             "username": user.username,
-        }
-        return Response(response)
+        })
+        response = merge_cart_cookie_to_redis(request, user, response)
+        return response
 
 

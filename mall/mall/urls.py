@@ -16,15 +16,19 @@ Including another URLconf
 from django.conf.urls import url, include
 from django.contrib import admin
 from rest_framework.documentation import include_docs_urls
+# import xadmin
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
+    # url(r'xadmin/', include(xadmin.site.urls)),
     url(r'^users/', include('users.urls', namespace="users")),
     url(r'^oauth/', include('oauth.urls', namespace="oauth")),
     url(r'^verifications/', include('verifications.urls', namespace="verifications")),
     url(r'^areas/', include('areas.urls', namespace="areas")),
     url(r'^goods/', include('goods.urls', namespace="goods")),
     url(r'^ckeditor/', include('ckeditor_uploader.urls'), name="ckeditor"),
+    url(r'^cart/', include('carts.urls', namespace='cart')),
+    url(r'^orders/', include('orders.urls', namespace='orders')),
     url(r'^docs/', include_docs_urls(title='API接口文档')),
 
 ]

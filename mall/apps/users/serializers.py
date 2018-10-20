@@ -155,27 +155,26 @@ class UserBrowsingHistorySerializer(serializers.Serializer):
     """
     sku_id = serializers.IntegerField(label="商品编号", required=True, min_value=1)
 
-    def validate_sku_id(self, value):
+    def validate(self, attrs):
         """判断sku_id是否正确"""
+        sku_id = attrs.get("sku_id")
         try:
-            SKU.objects.get(id=value)
+            SKU.objects.get(id=sku_id)
         except SKU.DoesNotExist:
-            raise serializers.ValidationError("商品不存在")
-        return value
+            raise serializers.ValidationError("商品编号错误")
+        return attrs
 
     def create(self, validated_data):
-        # 获取用户信息
+        """将sku_id保存到redis中"""
+        # 获取用户的id
         user_id = self.context['request'].user.id
-        # 获取商品id
-        sku_id = validated_data['sku_id']
-        # 连接redis
+        # 获取商品的id
+        sku_id = validated_data.get("sku_id")
         redis_conn = get_redis_connection('history')
-        # 移除已经存在的本记录
+        # 如果本商品的信息已经存在，则删除
         redis_conn.lrem('history_%s' % user_id, 0, sku_id)
-        # 添加新的记录
         redis_conn.lpush('history_%s' % user_id, sku_id)
-        # 保存最多5条记录
+        # 最多只保存5条记录
         redis_conn.ltrim('history_%s' % user_id, 0, 4)
         return validated_data
-
 

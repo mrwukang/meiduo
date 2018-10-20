@@ -40,7 +40,7 @@ ALLOWED_HOSTS = ['*']
 
 
 # Application definition
-
+# 注册的应用
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -286,11 +286,11 @@ CKEDITOR_IMAGE_BACKEND = 'pillow'
 DEFAULT_FILE_STORAGE = 'utils.fastdfs.storage.FastDFSStorage'
 
 # 生成的静态html文件保存目录
-GENERATED_STATIC_HTML_FILES_DIR = os.path.join(os.path.dirname(BASE_DIR), 'fonts')
+GENERATED_STATIC_HTML_FILES_DIR = os.path.join(os.path.dirname(BASE_DIR), 'fronts')
 
 # 定时任务
 CRONJOBS = [
-    # 每5分钟执行一次生成主页静态文件
+    # 每1分钟执行一次生成主页静态文件
     ('*/1 * * * *', 'contents.crons.generate_static_index_html', '>> /home/python/python_project/meiduo/mall/logs/crontab.log')
 ]
 

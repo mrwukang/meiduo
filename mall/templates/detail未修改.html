@@ -4,11 +4,11 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
     <title>美多商城-商品详情</title>
-    <link rel="stylesheet" type="text/css" href="../css/reset.css">
-    <link rel="stylesheet" type="text/css" href="../css/main.css">
-    <script type="text/javascript" src="../js/host.js"></script>
-    <script type="text/javascript" src="../js/vue-2.5.16.js"></script>
-    <script type="text/javascript" src="../js/axios-0.18.0.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/css/reset.css">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <script type="text/javascript" src="/js/host.js"></script>
+    <script type="text/javascript" src="/js/vue-2.5.16.js"></script>
+    <script type="text/javascript" src="/js/axios-0.18.0.min.js"></script>
 </head>
 <body>
     <div id="app" v-cloak>
@@ -22,26 +22,26 @@
                     <a @click="logout">退出</a>
                 </div>
                 <div v-else class="login_btn fl">
-                    <a href="../login.html">登录</a>
+                    <a href="login.html">登录</a>
                     <span>|</span>
-                    <a href="../register.html">注册</a>
+                    <a href="register.html">注册</a>
                 </div>
                 <div class="user_link fl">
                     <span>|</span>
-                    <a href="../user_center_info.html">用户中心</a>
+                    <a href="/user_center_info.html">用户中心</a>
                     <span>|</span>
-                    <a href="../cart.html">我的购物车</a>
+                    <a href="/cart.html">我的购物车</a>
                     <span>|</span>
-                    <a href="../user_center_order.html">我的订单</a>
+                    <a href="/user_center_order.html">我的订单</a>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="search_bar clearfix">
-            <a href="../index.html" class="logo fl"><img src="../images/logo.png"></a>
+            <a href="/index.html" class="logo fl"><img src="/images/logo.png"></a>
             <div class="search_wrap fl">
-                <form method="get" action="../search.html" class="search_con">
+                <form method="get" action="/search.html" class="search_con">
                     <input type="text" class="input_text fl" name="q" placeholder="搜索商品">
                     <input type="submit" class="input_btn fr" name="" value="搜索">
                 </form>
@@ -54,27 +54,27 @@
             </div>
 
             <div class="guest_cart fr">
-            <a href="../cart.html" class="cart_name fl">我的购物车</a>
+            <a href="#" class="cart_name fl">我的购物车</a>
             <div class="goods_count fl" id="show_count">15</div>
 
             <ul class="cart_goods_show">
                 <li>
-                    <img src="../images/goods/goods001.jpg" alt="商品图片">
+                    <img src="images/goods/goods001.jpg" alt="商品图片">
                     <h4>商品名称手机</h4>
                     <div>4</div>
                 </li>
                 <li>
-                    <img src="../images/goods/goods002.jpg" alt="商品图片">
+                    <img src="images/goods/goods002.jpg" alt="商品图片">
                     <h4>商品名称手机</h4>
                     <div>5</div>
                 </li>
                 <li>
-                    <img src="../images/goods/goods003.jpg" alt="商品图片">
+                    <img src="images/goods/goods003.jpg" alt="商品图片">
                     <h4>商品名称手机</h4>
                     <div>6</div>
                 </li>
                 <li>
-                    <img src="../images/goods/goods003.jpg" alt="商品图片">
+                    <img src="images/goods/goods003.jpg" alt="商品图片">
                     <h4>商品名称手机</h4>
                     <div>6</div>
                 </li>
@@ -101,7 +101,7 @@
                                         <div class="group_name fl">{{cat2.name}} &gt;</div>
                                         <div class="group_detail fl">
                                             {% for cat3 in cat2.sub_cats %}
-                                            <a href="../list.html?cat={{cat3.id}}">{{cat3.name}}</a>
+                                            <a href="/list.html?cat={{cat3.id}}">{{cat3.name}}</a>
                                             {% endfor %}
                                         </div>
                                     </div>
@@ -127,7 +127,7 @@
         <span>></span>
         <span>{{ goods.category2.name }}</span>
         <span>></span>
-        <a href="../list.html?cat={{ goods.category3.id }}">{{goods.category3.name }}</a>
+        <a href="/list.html?cat={{ goods.category3.id }}">{{goods.category3.name }}</a>
     </div>
 
     <div class="goods_detail_con clearfix">
@@ -244,7 +244,7 @@
         var price = {{sku.price}};
         var cat = {{ goods.category3.id }};
     </script>
-    <script type="text/javascript" src="../js/detail.js"></script>
+    <script type="text/javascript" src="/js/detail.js"></script>
 
 </body>
 </html>
